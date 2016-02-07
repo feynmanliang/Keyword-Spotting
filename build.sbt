@@ -18,6 +18,8 @@ lazy val root = (project in file(".")).
         // or just libraryDependencies.value if you don't depend on scala-swing
         libraryDependencies.value
       }
-    }
+    },
+    libraryDependencies += "org.scalactic" %% "scalactic" % "2.2.6",
+    libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.6" % "test"
   )
 
