@@ -1,7 +1,6 @@
 package com.feynmanliang.kws
 
 import scala.io.Source
-import scala.collection.immutable.TreeSet
 import scala.xml.Elem
 
 case class CTMEntry(
@@ -10,13 +9,8 @@ case class CTMEntry(
     startTime: Double,
     duration: Double,
     token: String,
-    score: Double) extends Ordered[CTMEntry] {
-  // Required as of Scala 2.11 for reasons unknown - the companion to Ordered
-  // should already be in implicit scope
-  import scala.math.Ordered.orderingToOrdered
-
-  def compare(that: CTMEntry): Int = (this.kwFile, this.startTime) compare (that.kwFile, that.startTime)
-
+    prevEndTime: Double, // for testing contiguity during phrase query
+    score: Double) {
   def toXML(): Elem = {
     <kw
       file={kwFile}
@@ -39,15 +33,17 @@ class KWSIndex(index: Map[String, Set[CTMEntry]]) {
           entry <- x if (
             entry.kwFile == prevEntry.kwFile
             && prevEntry.startTime < entry.startTime
+            && prevEntry.startTime + prevEntry.duration == entry.prevEndTime
             && entry.startTime - (prevEntry.startTime + prevEntry.duration) < 0.5)
         } yield {
           CTMEntry(
-            entry.kwFile,
-            entry.channel,
-            prevEntry.startTime,
-            entry.startTime + entry.duration - prevEntry.startTime,
-            prevEntry.token ++ " " ++ entry.token,
-            prevEntry.score * entry.score
+            kwFile = entry.kwFile,
+            channel = entry.channel,
+            startTime = prevEntry.startTime,
+            duration = entry.startTime + entry.duration - prevEntry.startTime,
+            token = prevEntry.token ++ " " ++ entry.token,
+            prevEndTime = prevEntry.prevEndTime,
+            score = prevEntry.score * entry.score
           )
         }).toSet
       }
@@ -88,19 +84,35 @@ class QueryResult(val file: String, results: Map[String, Set[CTMEntry]]) {
 
 object KWSIndex {
   def fromFile(ctmPath: String): KWSIndex = {
-    val ctmFile = Source.fromFile(ctmPath)
-    val index = ctmFile.getLines().map { line =>
+    def line2entry(line: String, prevEndTime: Double): CTMEntry = {
       val items = line.split(" ")
-      val entry = CTMEntry(
-        items(0),
-        items(1).toInt,
-        items(2).toDouble,
-        items(3).toDouble,
-        items(4).toLowerCase,
-        items(5).toDouble)
-      entry.token -> entry
-    }.foldLeft(Map.empty[String, TreeSet[CTMEntry]]) { (acc, pair) =>
-      acc + (pair._1 -> (acc.getOrElse(pair._1, TreeSet.empty[CTMEntry]) + (pair._2)))
+      CTMEntry(
+        kwFile = items(0),
+        channel = items(1).toInt,
+        startTime = items(2).toDouble,
+        duration = items(3).toDouble,
+        token = items(4).toLowerCase,
+        prevEndTime = prevEndTime,
+        score = items(5).toDouble)
+    }
+    def line2endTime(line: String): Double = {
+      val items = line.split(" ")
+      items(2).toDouble + items(3).toDouble
+    }
+    val ctmFile = Source.fromFile(ctmPath)
+    val index = ctmFile.getLines().sliding(2).zipWithIndex.flatMap { case (lines,i) =>
+      if (i == 0) {
+        val firstEntry = line2entry(lines(1), 0D)
+        val entry = line2entry(lines(1), line2endTime(lines(0)))
+        List(
+          firstEntry.token -> firstEntry,
+          entry.token -> entry)
+      } else {
+        val entry = line2entry(lines(1), line2endTime(lines(0)))
+        List(entry.token -> entry)
+      }
+    }.foldLeft(Map.empty[String, Set[CTMEntry]]) { (acc, pair) =>
+      acc + (pair._1 -> (acc.getOrElse(pair._1, Set.empty[CTMEntry]) + (pair._2)))
     }
     new KWSIndex(index)
   }
