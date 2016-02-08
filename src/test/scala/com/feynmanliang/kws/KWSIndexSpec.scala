@@ -4,9 +4,8 @@ import org.scalatest.FlatSpec
 
 class KWSIndexSpec extends FlatSpec {
   val ctmPath = "lib/ctms/reference.ctm"
-  val index = KWSIndex.fromFile(ctmPath)
-
   val queryFilePath = "lib/kws/queries.xml"
+  val index = KWSIndex.fromFile(ctmPath)
   val queryResults = index.kws(queryFilePath)
 
   "A KWSIndex" should "contain words known to be in the CTM" in {
@@ -22,7 +21,6 @@ class KWSIndexSpec extends FlatSpec {
   it should "only contain phrase queries when words are <0.5 sec apart" in {
     val tokens = "what she has gone"
     assert(index.get("what she has gone").get.size === 1)
-    println(index.get("pat pat pat"))
     assert(index.get("pat pat pat").get.size === 1)
   }
 
