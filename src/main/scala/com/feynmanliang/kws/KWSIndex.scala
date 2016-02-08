@@ -1,6 +1,5 @@
 package com.feynmanliang.kws
 
-import scala.collection.mutable.{HashMap, Set, MultiMap}
 import scala.io.Source
 import scala.xml.Elem
 
@@ -22,18 +21,35 @@ case class CTMEntry(
   }
 }
 
-class KWSIndex(index: MultiMap[String, CTMEntry]) {
-  def get(token: String): Option[Set[CTMEntry]] = index.get(token)
-  def get(tokens: Iterable[String]): Option[Set[CTMEntry]] = {
-    val res = tokens.flatMap(index.get)
+class KWSIndex(index: Map[String, Set[CTMEntry]]) {
+  def get(tokens: String): Option[Set[CTMEntry]] = {
+    val res = tokens.split(" ")
+      .flatMap(index.get)
+      .reduceLeft { (acc, x) =>
+        (for {
+          prevEntry <- acc
+          entry <- x if (
+            entry.kwFile == prevEntry.kwFile
+            && entry.startTime - (prevEntry.startTime + prevEntry.duration) < 0.05)
+        } yield {
+          CTMEntry(
+            entry.kwFile,
+            entry.channel,
+            prevEntry.startTime,
+            entry.startTime + entry.duration - prevEntry.startTime,
+            prevEntry.token ++ " " ++ entry.token,
+            prevEntry.score * entry.score
+          )
+        }).toSet
+      }
     if (res.isEmpty) None
-    else Some(res.reduce(_ ++ _))
+    else Some(res)
   }
 
   def kws(queryFilePath: String): QueryResult = {
     val queryFile = scala.xml.XML.loadFile(queryFilePath)
     val results = (queryFile \ "kw").map { kw =>
-      this.get((kw \ "kwtext").text.split(" ")) match {
+      this.get((kw \ "kwtext").text) match {
         case None => (kw \ "@kwid").text -> Set()
         case Some(hits) => (kw \ "@kwid").text -> hits
       }
@@ -43,9 +59,7 @@ class KWSIndex(index: MultiMap[String, CTMEntry]) {
   }
 }
 
-class QueryResult(
-    val file: String,
-    results: scala.collection.immutable.Map[String, Set[CTMEntry]]) {
+class QueryResult(val file: String, results: Map[String, Set[CTMEntry]]) {
 
   def toXML(): Elem = {
     <kwslist
@@ -73,11 +87,11 @@ object KWSIndex {
         items(1).toInt,
         items(2).toDouble,
         items(3).toDouble,
-        items(4),
+        items(4).toLowerCase,
         items(5).toDouble)
       entry.token -> entry
-    }.foldLeft(new HashMap[String, Set[CTMEntry]] with MultiMap[String, CTMEntry]) { (acc, pair) =>
-      acc.addBinding(pair._1, pair._2)
+    }.foldLeft(Map.empty[String, Set[CTMEntry]]) { (acc, pair) =>
+      acc + (pair._1 -> (acc.getOrElse(pair._1, Set.empty[CTMEntry]) + (pair._2)))
     }
     new KWSIndex(index)
   }

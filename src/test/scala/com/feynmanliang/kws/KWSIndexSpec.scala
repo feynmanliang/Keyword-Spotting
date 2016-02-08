@@ -3,11 +3,23 @@ package com.feynmanliang.kws
 import org.scalatest.FlatSpec
 
 class KWSIndexSpec extends FlatSpec {
+  val ctmPath = "lib/ctms/reference.ctm"
+  val index = KWSIndex.fromFile(ctmPath)
 
-  "A KWSIndex" should "build a KWSIndex with fromFile" in {
-    val ctmPath = "lib/ctms/reference.ctm"
-    val index = KWSIndex.fromFile(ctmPath)
+  val queryFilePath = "lib/kws/queries.xml"
+  val queryResults = index.kws(queryFilePath)
+
+  "A KWSIndex" should "contain words known to be in the CTM" in {
     assert(!index.get("halo").isEmpty)
+  }
+
+  it should "be case insensitive" in {
+    assert(!index.get("rachael").isEmpty)
+    assert(!index.get("kisumu").isEmpty)
+  }
+
+  it should "only contain phrase queries when words are <0.5 sec apart" in {
+    assert(index.get("what she has gone").get.size == 1)
   }
 
   it should "perform KWS when given a queryFile" in {
