@@ -7,13 +7,17 @@ class MorphDecomposeSpec extends FlatSpec {
   val obPath = "lib/dicts/morph.dct"
   val md = MorphDecompose(qPath, obPath)
 
-  
-    //assert(qDict.get("zinacheza").isEmpty)
-    //assert(qDict.get("vyovyote").isEmpty)
-    //assert(obDict.get("vyovyote").isDefined)
  "A MorphDecompose" should "decompose a query string" in {
     assert(md.decomposeQuery("walini") === "wali ni")
     assert(md.decomposeQuery("very vile") === "ve ry vi le")
+  }
+
+  it should "decompose a CTMEntry" in {
+    val entry = CTMEntry("", 1, 0.5, 0.4, "vile", 0.33, 0.09)
+    assert(md.decomposeEntry(entry) == List(
+      CTMEntry("", 1, 0.5, 0.2, "vi", 0.33, 0.3),
+      CTMEntry("", 1, 0.7, 0.2, "le", 0.7, 0.3)
+    ))
   }
 }
 

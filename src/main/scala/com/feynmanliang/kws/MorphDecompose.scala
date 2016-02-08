@@ -17,7 +17,23 @@ class MorphDecompose private (
       We distribute startTime/durations and scores uniformly across all morphemes.
    */
   def decomposeEntry(entry: CTMEntry): List[CTMEntry] = {
-    ???
+    obDict.get(entry.token) match {
+      case None => sys.error(s"Couldn't morph decompose token: ${entry.token}")
+      case Some(morphs) => {
+        val morphDur = (entry.duration / morphs.size)
+        val morphScore = math.pow(entry.score, 1D/morphs.size)
+        morphs.zipWithIndex.map { case (morph, i) =>
+          val prevEndTime = if (i == 0) entry.prevEndTime else entry.startTime + i*morphDur
+          entry.copy(
+            startTime = entry.startTime + i*morphDur,
+            duration = morphDur,
+            token = morph,
+            prevEndTime = prevEndTime,
+            score = morphScore
+          )
+        }
+      }
+    }
   }
 }
 
