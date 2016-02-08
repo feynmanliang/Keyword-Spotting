@@ -8,11 +8,11 @@ class KWSIndexMorphSpec extends FlatSpec {
   val obPath = "lib/dicts/morph.dct"
   val qPath = "lib/dicts/morph.kwslist.dct"
 
-  val indexMorph = KWSIndexMorph(ctmPath, queryFilePath, obPath, qPath)
+  val indexMorph = KWSIndexMorph(ctmPath, obPath, qPath)
 
   "A KWSIndexMorph" should "be queryable" in {
     val queryResults = indexMorph.kws(queryFilePath)
-    println(queryResults.toXML())
+    assert((queryResults.toXML() \ "detected_kwlist").length > 100)
   }
 }
 

@@ -1,5 +1,7 @@
 package com.feynmanliang.kws
 
+import java.io.File
+
 class KWSIndexMorph(
     index: Map[String, Set[CTMEntry]],
     md: MorphDecompose) extends KWSIndex(index) {
@@ -33,12 +35,47 @@ class KWSIndexMorph(
 }
 
 object KWSIndexMorph {
-  def apply(
-      ctmPath: String, qPath: String, obDictPath: String, qDictPath: String): KWSIndexMorph  = {
+  def apply(ctmPath: String, obDictPath: String, qDictPath: String): KWSIndexMorph  = {
     val index = KWSIndex(ctmPath)
     val md = MorphDecompose(qDictPath, obDictPath)
 
     new KWSIndexMorph(index.index, md)
+  }
+
+  def main(args: Array[String]):Unit = {
+    case class Config(
+      ctmFile: File = new File("."),
+      queryFile: File = new File("."),
+      dict: File = new File("."),
+      kwDict: File = new File("."),
+      morphDecompose: Boolean = false,
+      out: File = new File("."))
+
+    val parser = new scopt.OptionParser[Config]("KWSIndex") {
+      head("kwsindex")
+      opt[File]('c', "ctmFile") required() valueName("<file>") action { (x, c) =>
+      c.copy(ctmFile = x) } text("ctmFile is a required file property")
+      opt[File]('q', "queryFile") required() valueName("<file>") action { (x, c) =>
+      c.copy(queryFile= x) } text("queryFile is a required file property")
+      opt[File]('d', "dict") required() valueName("<file>") action { (x, c) =>
+      c.copy(dict= x) } text("dict is a required file property")
+      opt[File]('k', "kwDict") required() valueName("<file>") action { (x, c) =>
+      c.copy(kwDict= x) } text("kwDict is a required file property")
+      opt[File]('o', "out") required() valueName("<file>") action { (x, c) =>
+      c.copy(out = x) } text("out is a required file property")
+    }
+    parser.parse(args, Config()) match {
+      case Some(config) =>
+        val indexMorph = KWSIndexMorph(
+          config.ctmFile.getPath(),
+          config.dict.getPath(),
+          config.kwDict.getPath())
+        val queryResults = indexMorph.kws(config.queryFile.getPath())
+        scala.xml.XML.save(config.out.getPath(), queryResults.toXML())
+      case None =>
+        // arguments are bad, error message will have been displayed
+        sys.error("Error parsing arguments!")
+    }
   }
 }
 
