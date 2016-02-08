@@ -30,6 +30,7 @@ class KWSIndex(index: Map[String, Set[CTMEntry]]) {
           prevEntry <- acc
           entry <- x if (
             entry.kwFile == prevEntry.kwFile
+            && prevEntry.startTime < entry.startTime
             && entry.startTime - (prevEntry.startTime + prevEntry.duration) < 0.05)
         } yield {
           CTMEntry(

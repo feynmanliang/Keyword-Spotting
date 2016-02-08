@@ -19,7 +19,9 @@ class KWSIndexSpec extends FlatSpec {
   }
 
   it should "only contain phrase queries when words are <0.5 sec apart" in {
-    assert(index.get("what she has gone").get.size == 1)
+    assert(index.get("what she has gone").get.size === 1)
+    println(index.get("pat pat pat"))
+    assert(index.get("pat pat pat").get.size === 1)
   }
 
   it should "perform KWS when given a queryFile" in {
