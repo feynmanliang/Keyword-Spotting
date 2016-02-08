@@ -39,9 +39,7 @@ class KWSIndex(index: Map[String, Set[CTMEntry]]) {
             && prevEntry.startTime + prevEntry.duration == entry.prevEndTime
             && entry.startTime - (prevEntry.startTime + prevEntry.duration) < 0.5)
         } yield {
-          CTMEntry(
-            kwFile = entry.kwFile,
-            channel = entry.channel,
+          entry.copy(
             startTime = prevEntry.startTime,
             duration = entry.startTime + entry.duration - prevEntry.startTime,
             token = prevEntry.token ++ " " ++ entry.token,
