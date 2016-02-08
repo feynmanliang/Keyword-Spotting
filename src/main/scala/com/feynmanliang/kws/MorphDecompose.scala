@@ -2,15 +2,45 @@ package com.feynmanliang.kws
 
 import scala.io.Source
 
+class KWSIndexMorph(
+    index: Map[String, Set[CTMEntry]],
+    md: MorphDecompose) extends KWSIndex(index) {
+  val morphIndex = index.mapValues(_.flatMap(md.decomposeEntry))
+  override def get(tokens: String): Option[Set[CTMEntry]] = {
+    val res = tokens.split("\\s+")
+      .map(_.toLowerCase)
+      .flatMap(md.decomposeQuery(_).split("\\s+"))
+      .flatMap(index.get)
+    if (res.isEmpty) None
+    else Some(
+      res.reduceLeft { (acc, x) =>
+        (for {
+          prevEntry <- acc
+          entry <- x if (
+            entry.kwFile == prevEntry.kwFile
+            && prevEntry.startTime < entry.startTime
+            && prevEntry.startTime + prevEntry.duration == entry.prevEndTime
+            && entry.startTime - (prevEntry.startTime + prevEntry.duration) < 0.5)
+        } yield {
+          entry.copy(
+            startTime = prevEntry.startTime,
+            duration = entry.startTime + entry.duration - prevEntry.startTime,
+            token = prevEntry.token ++ " " ++ entry.token,
+            prevEndTime = prevEntry.prevEndTime,
+            score = prevEntry.score * entry.score
+          )
+        }).toSet
+      })
+  }
+}
+
 class MorphDecompose private (
     qDict: Map[String, List[String]], obDict: Map[String, List[String]]) {
   def decomposeQuery(tokens: String): String = {
-    val res = tokens.split(" ")
+    tokens.split("\\s+")
       .map(_.toLowerCase)
-      .flatMap(qDict.get)
-      .flatten
+      .flatMap { token => qDict.getOrElse(token, List(token)) }
       .mkString(" ")
-    res
   }
 
   /** Decompose a CTM entry into a list of morphemes
@@ -49,14 +79,6 @@ object MorphDecompose {
     val qDict = parseMorphDict(qDictPath)
     val obDict = parseMorphDict(obDictPath)
     new MorphDecompose(qDict, obDict)
-  }
-
-  def main(args: Array[String]):Unit = {
-    val queryTermMorphs = "lib/dicts/morph.kwslist.dct"
-    val oneBestListMorphs= "lib/dicts/morph.dct"
-
-    println(parseMorphDict(queryTermMorphs))
-    println(parseMorphDict(oneBestListMorphs))
   }
 }
 

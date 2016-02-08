@@ -1,6 +1,6 @@
 package com.feynmanliang.kws
 
-import java.io.File
+import java.io.{BufferedWriter, File, FileWriter}
 import scala.io.Source
 import scala.xml.Elem
 
@@ -11,7 +11,12 @@ case class CTMEntry(
     duration: Double,
     token: String,
     prevEndTime: Double, // for testing contiguity during phrase query
-    score: Double) {
+    score: Double) extends Ordered[CTMEntry] {
+  import scala.math.Ordered.orderingToOrdered
+
+  def compare(that: CTMEntry): Int =
+    (this.kwFile, this.startTime) compare (that.kwFile, that.startTime)
+
   def toXML(): Elem = {
     <kw
       file={kwFile}
@@ -61,10 +66,23 @@ class KWSIndex(index: Map[String, Set[CTMEntry]]) {
 
     new QueryResult(queryFilePath.split("/").last, results)
   }
+
+
+  def write(ctmPath: String): Unit = {
+    def entry2line(entry: CTMEntry): String = {
+      s"${entry.kwFile} ${entry.channel} ${entry.startTime} ${entry.duration} " +
+      s"${entry.token} ${entry.score}"
+    }
+    val file = new File(ctmPath)
+    val bw = new BufferedWriter(new FileWriter(file))
+    index.values.toList.flatten.sorted.foreach { entry =>
+      bw.write(entry2line(entry))
+    }
+    bw.close()
+  }
 }
 
 class QueryResult(val file: String, results: Map[String, Set[CTMEntry]]) {
-
   def toXML(): Elem = {
     <kwslist
         kwlist_filename="IARPA-babel202b-v1.0d_conv-dev.kwlist.xml"
@@ -82,7 +100,7 @@ class QueryResult(val file: String, results: Map[String, Set[CTMEntry]]) {
 }
 
 object KWSIndex {
-  def fromFile(ctmPath: String): KWSIndex = {
+  def apply(ctmPath: String): KWSIndex = {
     def line2entry(line: String, prevEndTime: Double): CTMEntry = {
       val items = line.split("\\s+")
       CTMEntry(
@@ -116,11 +134,11 @@ object KWSIndex {
     new KWSIndex(index)
   }
 
-
   def main(args: Array[String]):Unit = {
     case class Config(
       ctmFile: File = new File("."),
       queryFile: File = new File("."),
+      morphDecompose: Boolean = false,
       out: File = new File("."))
 
     val parser = new scopt.OptionParser[Config]("KWSIndex") {
@@ -136,7 +154,7 @@ object KWSIndex {
     parser.parse(args, Config()) match {
       case Some(config) =>
         // do stuff
-        val index = KWSIndex.fromFile(config.ctmFile.getPath())
+        val index = KWSIndex(config.ctmFile.getPath())
         val queryResults = index.kws(config.queryFile.getPath())
         scala.xml.XML.save(config.out.getPath(), queryResults.toXML())
       case None =>

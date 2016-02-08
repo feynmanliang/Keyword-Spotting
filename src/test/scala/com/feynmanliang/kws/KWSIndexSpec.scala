@@ -5,7 +5,7 @@ import org.scalatest.FlatSpec
 class KWSIndexSpec extends FlatSpec {
   val ctmPath = "lib/ctms/reference.ctm"
   val queryFilePath = "lib/kws/queries.xml"
-  val index = KWSIndex.fromFile(ctmPath)
+  val index = KWSIndex(ctmPath)
   val queryResults = index.kws(queryFilePath)
 
   "A KWSIndex" should "contain words known to be in the CTM" in {
@@ -26,7 +26,7 @@ class KWSIndexSpec extends FlatSpec {
 
   it should "perform KWS when given a queryFile" in {
     val ctmPath = "lib/ctms/reference.ctm"
-    val index = KWSIndex.fromFile(ctmPath)
+    val index = KWSIndex(ctmPath)
 
     val queryFilePath = "lib/kws/queries.xml"
     val queryResults = index.kws(queryFilePath)
