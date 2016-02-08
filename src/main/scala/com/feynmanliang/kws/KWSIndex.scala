@@ -1,6 +1,7 @@
 package com.feynmanliang.kws
 
 import scala.io.Source
+import scala.collection.immutable.TreeSet
 import scala.xml.Elem
 
 case class CTMEntry(
@@ -9,7 +10,13 @@ case class CTMEntry(
     startTime: Double,
     duration: Double,
     token: String,
-    score: Double) {
+    score: Double) extends Ordered[CTMEntry] {
+  // Required as of Scala 2.11 for reasons unknown - the companion to Ordered
+  // should already be in implicit scope
+  import scala.math.Ordered.orderingToOrdered
+
+  def compare(that: CTMEntry): Int = (this.kwFile, this.startTime) compare (that.kwFile, that.startTime)
+
   def toXML(): Elem = {
     <kw
       file={kwFile}
@@ -24,6 +31,7 @@ case class CTMEntry(
 class KWSIndex(index: Map[String, Set[CTMEntry]]) {
   def get(tokens: String): Option[Set[CTMEntry]] = {
     val res = tokens.split(" ")
+      .map(_.toLowerCase)
       .flatMap(index.get)
       .reduceLeft { (acc, x) =>
         (for {
@@ -31,7 +39,7 @@ class KWSIndex(index: Map[String, Set[CTMEntry]]) {
           entry <- x if (
             entry.kwFile == prevEntry.kwFile
             && prevEntry.startTime < entry.startTime
-            && entry.startTime - (prevEntry.startTime + prevEntry.duration) < 0.05)
+            && entry.startTime - (prevEntry.startTime + prevEntry.duration) < 0.5)
         } yield {
           CTMEntry(
             entry.kwFile,
@@ -91,8 +99,8 @@ object KWSIndex {
         items(4).toLowerCase,
         items(5).toDouble)
       entry.token -> entry
-    }.foldLeft(Map.empty[String, Set[CTMEntry]]) { (acc, pair) =>
-      acc + (pair._1 -> (acc.getOrElse(pair._1, Set.empty[CTMEntry]) + (pair._2)))
+    }.foldLeft(Map.empty[String, TreeSet[CTMEntry]]) { (acc, pair) =>
+      acc + (pair._1 -> (acc.getOrElse(pair._1, TreeSet.empty[CTMEntry]) + (pair._2)))
     }
     new KWSIndex(index)
   }

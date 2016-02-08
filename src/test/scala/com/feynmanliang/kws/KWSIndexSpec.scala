@@ -16,9 +16,18 @@ class KWSIndexSpec extends FlatSpec {
   it should "be case insensitive" in {
     assert(!index.get("rachael").isEmpty)
     assert(!index.get("kisumu").isEmpty)
+    assert(index.get("Wenga fans").size === 1)
   }
 
   it should "only contain phrase queries when words are <0.5 sec apart" in {
+    val tokens = "what she has gone"
+    println(
+      tokens.split(" ")
+      .map(_.toLowerCase)
+      .flatMap(index.get)
+      .toList
+    )
+    println(index.get("what she has gone"))
     assert(index.get("what she has gone").get.size === 1)
     println(index.get("pat pat pat"))
     assert(index.get("pat pat pat").get.size === 1)
