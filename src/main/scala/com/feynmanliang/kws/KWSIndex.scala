@@ -1,5 +1,6 @@
 package com.feynmanliang.kws
 
+import java.io.File
 import scala.io.Source
 import scala.xml.Elem
 
@@ -27,7 +28,9 @@ class KWSIndex(index: Map[String, Set[CTMEntry]]) {
     val res = tokens.split(" ")
       .map(_.toLowerCase)
       .flatMap(index.get)
-      .reduceLeft { (acc, x) =>
+    if (res.isEmpty) None
+    else Some(
+      res.reduceLeft { (acc, x) =>
         (for {
           prevEntry <- acc
           entry <- x if (
@@ -46,9 +49,7 @@ class KWSIndex(index: Map[String, Set[CTMEntry]]) {
             score = prevEntry.score * entry.score
           )
         }).toSet
-      }
-    if (res.isEmpty) None
-    else Some(res)
+      })
   }
 
   def kws(queryFilePath: String): QueryResult = {
@@ -85,7 +86,7 @@ class QueryResult(val file: String, results: Map[String, Set[CTMEntry]]) {
 object KWSIndex {
   def fromFile(ctmPath: String): KWSIndex = {
     def line2entry(line: String, prevEndTime: Double): CTMEntry = {
-      val items = line.split(" ")
+      val items = line.split("\\s+")
       CTMEntry(
         kwFile = items(0),
         channel = items(1).toInt,
@@ -115,6 +116,35 @@ object KWSIndex {
       acc + (pair._1 -> (acc.getOrElse(pair._1, Set.empty[CTMEntry]) + (pair._2)))
     }
     new KWSIndex(index)
+  }
+
+
+  def main(args: Array[String]):Unit = {
+    case class Config(
+      ctmFile: File = new File("."),
+      queryFile: File = new File("."),
+      out: File = new File("."))
+
+    val parser = new scopt.OptionParser[Config]("KWSIndex") {
+      head("kwsindex")
+      opt[File]('c', "ctmFile") required() valueName("<file>") action { (x, c) =>
+      c.copy(ctmFile = x) } text("ctmFile is a required file property")
+      opt[File]('q', "queryFile") required() valueName("<file>") action { (x, c) =>
+      c.copy(queryFile= x) } text("queryFile is a required file property")
+      opt[File]('o', "out") required() valueName("<file>") action { (x, c) =>
+      c.copy(out = x) } text("out is a required file property")
+    }
+    // parser.parse returns Option[C]
+    parser.parse(args, Config()) match {
+      case Some(config) =>
+        // do stuff
+        val index = KWSIndex.fromFile(config.ctmFile.getPath())
+        val queryResults = index.kws(config.queryFile.getPath())
+        scala.xml.XML.save(config.out.getPath(), queryResults.toXML())
+      case None =>
+        // arguments are bad, error message will have been displayed
+        sys.error("Error parsing arguments!")
+    }
   }
 }
 

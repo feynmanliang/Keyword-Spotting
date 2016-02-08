@@ -20,6 +20,8 @@ lazy val root = (project in file(".")).
       }
     },
     libraryDependencies += "org.scalactic" %% "scalactic" % "2.2.6",
-    libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.6" % "test"
+    libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.6" % "test",
+    libraryDependencies += "com.github.scopt" %% "scopt" % "3.3.0",
+    resolvers += Resolver.sonatypeRepo("public")
   )
 
