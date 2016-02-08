@@ -28,7 +28,7 @@ case class CTMEntry(
   }
 }
 
-class KWSIndex(index: Map[String, Set[CTMEntry]]) {
+class KWSIndex(val index: Map[String, Set[CTMEntry]]) {
   def get(tokens: String): Option[Set[CTMEntry]] = {
     val res = tokens.split(" ")
       .map(_.toLowerCase)
@@ -79,23 +79,6 @@ class KWSIndex(index: Map[String, Set[CTMEntry]]) {
       bw.write(entry2line(entry))
     }
     bw.close()
-  }
-}
-
-class QueryResult(val file: String, results: Map[String, Set[CTMEntry]]) {
-  def toXML(): Elem = {
-    <kwslist
-        kwlist_filename="IARPA-babel202b-v1.0d_conv-dev.kwlist.xml"
-        language="swahili"
-        system_id="">
-      {for (kw <- results.keys) yield {
-        <detected_kwlist kwid={s"$kw"} oov_count="0" search_time="0.0">
-          {for (entry <- results(kw)) yield {
-            entry.toXML()
-          }}
-        </detected_kwlist>
-      }}
-    </kwslist>
   }
 }
 
