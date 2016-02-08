@@ -1,7 +1,7 @@
 package com.feynmanliang.kws
 
 import scala.collection.mutable.{HashMap, Set, MultiMap}
-import scala.io.BufferedSource
+import scala.io.Source
 import scala.xml.Elem
 
 case class CTMEntry(
@@ -23,15 +23,38 @@ case class CTMEntry(
 }
 
 class KWSIndex(index: MultiMap[String, CTMEntry]) {
-  def get(token: String) = index.get(token)
+  def get(token: String): Option[Set[CTMEntry]] = index.get(token)
+  def get(tokens: Iterable[String]): Option[Set[CTMEntry]] = {
+    val res = tokens.flatMap(index.get)
+    if (res.isEmpty) None
+    else Some(res.reduce(_ ++ _))
+  }
+
+  def kws(queryFilePath: String): QueryResult = {
+    val queryFile = scala.xml.XML.loadFile(queryFilePath)
+    val results = (queryFile \ "kw").map { kw =>
+      this.get((kw \ "kwtext").text.split(" ")) match {
+        case None => (kw \ "@kwid").text -> Set()
+        case Some(hits) => (kw \ "@kwid").text -> hits
+      }
+    }.toMap.asInstanceOf[Map[String, Set[CTMEntry]]]
+
+    new QueryResult(queryFilePath.split("/").last, results)
+  }
+}
+
+class QueryResult(
+    val file: String,
+    results: scala.collection.immutable.Map[String, Set[CTMEntry]]) {
+
   def toXML(): Elem = {
     <kwslist
         kwlist_filename="IARPA-babel202b-v1.0d_conv-dev.kwlist.xml"
         language="swahili"
         system_id="">
-      {for (kw <- index.keys) yield {
+      {for (kw <- results.keys) yield {
         <detected_kwlist kwid={s"$kw"} oov_count="0" search_time="0.0">
-          {for (entry <- index(kw)) yield {
+          {for (entry <- results(kw)) yield {
             entry.toXML()
           }}
         </detected_kwlist>
@@ -41,8 +64,9 @@ class KWSIndex(index: MultiMap[String, CTMEntry]) {
 }
 
 object KWSIndex {
-  def fromFile(ctmFile: BufferedSource): KWSIndex = {
-    val index = ctmFile.getLines().take(20).map { line =>
+  def fromFile(ctmPath: String): KWSIndex = {
+    val ctmFile = Source.fromFile(ctmPath)
+    val index = ctmFile.getLines().map { line =>
       val items = line.split(" ")
       val entry = CTMEntry(
         items(0),
