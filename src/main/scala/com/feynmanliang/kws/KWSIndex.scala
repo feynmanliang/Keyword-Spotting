@@ -30,12 +30,12 @@ case class CTMEntry(
 
 class KWSIndex(val index: Map[String, Set[CTMEntry]]) {
   def get(tokens: String): Option[Set[CTMEntry]] = {
-    val res = tokens.split(" ")
+    val res = tokens.split("\\s+")
       .map(_.toLowerCase)
-      .flatMap(index.get)
-    if (res.isEmpty) None
+      .map(index.get)
+    if (res.exists(_.isEmpty)) None
     else Some(
-      res.reduceLeft { (acc, x) =>
+      res.map(_.get).reduceLeft { (acc, x) =>
         (for {
           prevEntry <- acc
           entry <- x if (
