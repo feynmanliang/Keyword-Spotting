@@ -16,7 +16,7 @@ class MorphDecompose private (
    */
   def decomposeEntry(entry: CTMEntry): List[CTMEntry] = {
     obDict.get(entry.token) match {
-      case None => sys.error(s"Couldn't morph decompose token: ${entry.token}")
+      case None => List(entry)
       case Some(morphs) => {
         val morphDur = (entry.duration / morphs.size)
         val morphScore = math.pow(entry.score, 1D/morphs.size)

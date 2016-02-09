@@ -5,15 +5,22 @@ import java.io.File
 class KWSIndexMorph(
     index: Map[String, Set[CTMEntry]],
     md: MorphDecompose) extends KWSIndex(index) {
-  val morphIndex = index.mapValues(_.flatMap(md.decomposeEntry))
+
+  val morphIndex = index.values
+    .flatMap(_.flatMap(md.decomposeEntry))
+    .foldLeft(Map[String, Set[CTMEntry]]()) { (acc, x) =>
+      acc + (x.token -> (acc.getOrElse(x.token, Set[CTMEntry]()) + x))
+    }
+
   override def get(tokens: String): Option[Set[CTMEntry]] = {
     val res = tokens.split("\\s+")
       .map(_.toLowerCase)
       .flatMap(md.decomposeQuery(_).split("\\s+"))
-      .flatMap(index.get)
-    if (res.isEmpty) None
+      .map(morphIndex.get)
+    if (res.exists(_.isEmpty)) None
     else Some(
-      res.reduceLeft { (acc, x) =>
+      // TODO: split up by words, then do morph decomposition?
+      res.map(_.get).reduceLeft { (acc, x) =>
         (for {
           prevEntry <- acc
           entry <- x if (

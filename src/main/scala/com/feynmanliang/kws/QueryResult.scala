@@ -2,7 +2,9 @@ package com.feynmanliang.kws
 
 import scala.xml.Elem
 
-class QueryResult(val file: String, results: Map[String, Set[CTMEntry]]) {
+class QueryResult(
+    val file: String,
+    private[kws] val results: Map[String, Set[CTMEntry]]) {
   def toXML(): Elem = {
     <kwslist
         kwlist_filename="IARPA-babel202b-v1.0d_conv-dev.kwlist.xml"

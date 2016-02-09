@@ -39,9 +39,10 @@ class KWSIndex(val index: Map[String, Set[CTMEntry]]) {
         (for {
           prevEntry <- acc
           entry <- x if (
+            // phrases must belong to same file
             entry.kwFile == prevEntry.kwFile
             && prevEntry.startTime < entry.startTime
-            && prevEntry.startTime + prevEntry.duration == entry.prevEndTime
+            && prevEntry.startTime + prevEntry.duration == entry.prevEndTime // TODO: generalize to morphs?
             && entry.startTime - (prevEntry.startTime + prevEntry.duration) < 0.5)
         } yield {
           entry.copy(
@@ -86,14 +87,18 @@ object KWSIndex {
   def apply(ctmPath: String): KWSIndex = {
     def line2entry(line: String, prevEndTime: Double): CTMEntry = {
       val items = line.split("\\s+")
-      CTMEntry(
+      val startTime = items(2).toDouble
+      //val prevEndTimeTruncate = math.min(prevEndTime, startTime)
+      val prevEndTimeTruncate = prevEndTime
+      val entry = CTMEntry(
         kwFile = items(0),
         channel = items(1).toInt,
-        startTime = items(2).toDouble,
+        startTime = startTime,
         duration = items(3).toDouble,
         token = items(4).toLowerCase,
-        prevEndTime = prevEndTime,
+        prevEndTime = prevEndTimeTruncate,
         score = items(5).toDouble)
+      entry
     }
     def line2endTime(line: String): Double = {
       val items = line.split(" ")
@@ -101,13 +106,18 @@ object KWSIndex {
     }
     val ctmFile = Source.fromFile(ctmPath)
     val index = ctmFile.getLines().sliding(2).zipWithIndex.flatMap { case (lines,i) =>
+      val prevItems = lines(0).split("\\s+")
+      val items = lines(1).split("\\s+")
       if (i == 0) {
         val firstEntry = line2entry(lines(1), 0D)
         val entry = line2entry(lines(1), line2endTime(lines(0)))
         List(
           firstEntry.token -> firstEntry,
           entry.token -> entry)
-      } else {
+      } else if (prevItems(0) != items(0)) { // new kwFile
+        val entry = line2entry(lines(1), 0D)
+        List(entry.token -> entry)
+      } else { // same kwFile, accumulate endTimes
         val entry = line2entry(lines(1), line2endTime(lines(0)))
         List(entry.token -> entry)
       }
