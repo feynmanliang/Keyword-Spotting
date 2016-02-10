@@ -4,32 +4,9 @@ import java.io.{BufferedWriter, File, FileWriter}
 import scala.io.Source
 import scala.xml.Elem
 
-case class CTMEntry(
-    kwFile: String,
-    channel: Int,
-    startTime: Double,
-    duration: Double,
-    token: String,
-    prevToken: Option[String],
-    prevEndTime: Double, // for testing contiguity during phrase query
-    score: Double) extends Ordered[CTMEntry] {
-  import scala.math.Ordered.orderingToOrdered
-
-  def compare(that: CTMEntry): Int =
-    (this.kwFile, this.startTime) compare (that.kwFile, that.startTime)
-
-  def toXML(): Elem = {
-    <kw
-      file={kwFile}
-      channel={f"$channel"}
-      tbeg={f"$startTime%.2f"}
-      dur={f"$duration%.2f"}
-      score={f"$score%.6f"}
-      decision="YES" />
-  }
-}
-
-class KWSIndex(val index: Map[String, Set[CTMEntry]]) {
+class KWSIndex(
+    val index: Map[String, Set[CTMEntry]],
+    val scoreNormalization: String = "NONE") {
   def get(tokens: String): Option[Set[CTMEntry]] = {
     val res = tokens.split("\\s+")
       .map(_.toLowerCase)
@@ -64,7 +41,7 @@ class KWSIndex(val index: Map[String, Set[CTMEntry]]) {
       }
     }.toMap.asInstanceOf[Map[String, Set[CTMEntry]]]
 
-    new QueryResult(queryFilePath.split("/").last, results)
+    new QueryResult(queryFilePath.split("/").last, results, scoreNormalization)
   }
 
 
@@ -83,7 +60,7 @@ class KWSIndex(val index: Map[String, Set[CTMEntry]]) {
 }
 
 object KWSIndex {
-  def apply(ctmPath: String): KWSIndex = {
+  def apply(ctmPath: String, scoreNorm: String = "NONE"): KWSIndex = {
     def line2entry(line: String, prevToken: Option[String], prevEndTime: Double): CTMEntry = {
       val items = line.split("\\s+")
       val startTime = items(2).toDouble
@@ -129,13 +106,14 @@ object KWSIndex {
     }.foldLeft(Map.empty[String, Set[CTMEntry]]) { (acc, entry) =>
       acc + (entry.token -> (acc.getOrElse(entry.token, Set.empty[CTMEntry]) + (entry)))
     }
-    new KWSIndex(index)
+    new KWSIndex(index, scoreNorm)
   }
 
   def main(args: Array[String]):Unit = {
     case class Config(
       ctmFile: File = new File("."),
       queryFile: File = new File("."),
+      scoreNorm: String = "NONE",
       morphDecompose: Boolean = false,
       out: File = new File("."))
 
@@ -145,6 +123,8 @@ object KWSIndex {
       c.copy(ctmFile = x) } text("ctmFile is a required file property")
       opt[File]('q', "queryFile") required() valueName("<file>") action { (x, c) =>
       c.copy(queryFile= x) } text("queryFile is a required file property")
+      opt[String]('q', "scoreNorm") required() valueName("<string>") action { (x, c) =>
+      c.copy(scoreNorm= x) } text("scoreNormis a required string property")
       opt[File]('o', "out") required() valueName("<file>") action { (x, c) =>
       c.copy(out = x) } text("out is a required file property")
     }
@@ -152,7 +132,7 @@ object KWSIndex {
     parser.parse(args, Config()) match {
       case Some(config) =>
         // do stuff
-        val index = KWSIndex(config.ctmFile.getPath())
+        val index = KWSIndex(config.ctmFile.getPath(), config.scoreNorm)
         val queryResults = index.kws(config.queryFile.getPath())
         scala.xml.XML.save(config.out.getPath(), queryResults.toXML())
       case None =>

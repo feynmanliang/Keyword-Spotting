@@ -40,7 +40,7 @@ class KWSIndexSpec extends FlatSpec {
     val index = KWSIndex(ctmPath)
 
     assert(index.get("that's why am").isEmpty)
-    println(index.get("kae tukae kae").isEmpty)
+    assert(index.get("kae tukae kae").isEmpty)
   }
 }
 
