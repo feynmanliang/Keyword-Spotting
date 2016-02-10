@@ -20,15 +20,38 @@ class MorphDecompose private (
       case Some(morphs) => {
         val morphDur = (entry.duration / morphs.size)
         val morphScore = math.pow(entry.score, 1D/morphs.size)
-        morphs.zipWithIndex.map { case (morph, i) =>
-          val prevEndTime = if (i == 0) entry.prevEndTime else entry.startTime + i*morphDur
-          entry.copy(
-            startTime = entry.startTime + i*morphDur,
-            duration = morphDur,
-            token = morph,
-            prevEndTime = prevEndTime,
-            score = morphScore
-          )
+        if (morphs.size < 2) {
+          List(entry)
+        } else {
+          morphs.sliding(2).zipWithIndex.flatMap { case (morphPair, i) =>
+            if (i == 0) {
+              List(
+                entry.copy(
+                  duration = morphDur,
+                  token = morphPair(0),
+                  prevToken = None,
+                  score = morphScore
+                ),
+                entry.copy(
+                  startTime = entry.startTime + (i+1)*morphDur,
+                  duration = morphDur,
+                  token = morphPair(1),
+                  prevToken = Some(morphPair(0)),
+                  prevEndTime = entry.startTime + (i+1)*morphDur,
+                  score = morphScore)
+              )
+            } else {
+              List(
+                entry.copy(
+                  startTime = entry.startTime + (i+1)*morphDur,
+                  duration = morphDur,
+                  token = morphPair(1),
+                  prevToken = Some(morphPair(0)),
+                  prevEndTime = entry.startTime + (i+1)*morphDur,
+                  score = morphScore)
+              )
+            }
+          }.toList
         }
       }
     }

@@ -26,7 +26,8 @@ class KWSIndexMorph(
           entry <- x if (
             entry.kwFile == prevEntry.kwFile
             && prevEntry.startTime < entry.startTime
-            && prevEntry.startTime + prevEntry.duration == entry.prevEndTime
+            && (entry.prevToken.isEmpty || (entry.prevToken.get == prevEntry.token.split("\\s+").last))
+            //&& prevEntry.startTime + prevEntry.duration == entry.prevEndTime
             && entry.startTime - (prevEntry.startTime + prevEntry.duration) < 0.5)
         } yield {
           entry.copy(

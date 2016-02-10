@@ -10,6 +10,7 @@ case class CTMEntry(
     startTime: Double,
     duration: Double,
     token: String,
+    prevToken: Option[String],
     prevEndTime: Double, // for testing contiguity during phrase query
     score: Double) extends Ordered[CTMEntry] {
   import scala.math.Ordered.orderingToOrdered
@@ -45,11 +46,9 @@ class KWSIndex(val index: Map[String, Set[CTMEntry]]) {
             && prevEntry.startTime + prevEntry.duration == entry.prevEndTime // TODO: generalize to morphs?
             && entry.startTime - (prevEntry.startTime + prevEntry.duration) < 0.5)
         } yield {
-          entry.copy(
-            startTime = prevEntry.startTime,
+          prevEntry.copy(
             duration = entry.startTime + entry.duration - prevEntry.startTime,
             token = prevEntry.token ++ " " ++ entry.token,
-            prevEndTime = prevEntry.prevEndTime,
             score = prevEntry.score * entry.score
           )
         }).toSet
@@ -85,18 +84,17 @@ class KWSIndex(val index: Map[String, Set[CTMEntry]]) {
 
 object KWSIndex {
   def apply(ctmPath: String): KWSIndex = {
-    def line2entry(line: String, prevEndTime: Double): CTMEntry = {
+    def line2entry(line: String, prevToken: Option[String], prevEndTime: Double): CTMEntry = {
       val items = line.split("\\s+")
       val startTime = items(2).toDouble
-      //val prevEndTimeTruncate = math.min(prevEndTime, startTime)
-      val prevEndTimeTruncate = prevEndTime
       val entry = CTMEntry(
         kwFile = items(0),
         channel = items(1).toInt,
         startTime = startTime,
         duration = items(3).toDouble,
         token = items(4).toLowerCase,
-        prevEndTime = prevEndTimeTruncate,
+        prevToken = prevToken,
+        prevEndTime = prevEndTime,
         score = items(5).toDouble)
       entry
     }
@@ -105,24 +103,31 @@ object KWSIndex {
       items(2).toDouble + items(3).toDouble
     }
     val ctmFile = Source.fromFile(ctmPath)
-    val index = ctmFile.getLines().sliding(2).zipWithIndex.flatMap { case (lines,i) =>
-      val prevItems = lines(0).split("\\s+")
-      val items = lines(1).split("\\s+")
-      if (i == 0) {
-        val firstEntry = line2entry(lines(1), 0D)
-        val entry = line2entry(lines(1), line2endTime(lines(0)))
-        List(
-          firstEntry.token -> firstEntry,
-          entry.token -> entry)
-      } else if (prevItems(0) != items(0)) { // new kwFile
-        val entry = line2entry(lines(1), 0D)
-        List(entry.token -> entry)
-      } else { // same kwFile, accumulate endTimes
-        val entry = line2entry(lines(1), line2endTime(lines(0)))
-        List(entry.token -> entry)
+    val index = ctmFile.getLines().map { line =>
+      line2entry(line, None, 0D)
+    }.foldLeft(List.empty[CTMEntry]) { case (acc, entry) =>
+      acc match {
+        case Nil =>
+          entry.copy(
+            prevToken = None,
+            prevEndTime = 0D) :: acc
+        case prevEntry :: _ =>
+          if (prevEntry.kwFile != entry.kwFile) {
+            entry.copy(
+              prevToken = None,
+              prevEndTime = 0D) :: acc
+          } else {
+            entry.copy(
+              prevToken = if (prevEntry.startTime >= entry.startTime) {
+                prevEntry.prevToken
+              } else {
+                Some(prevEntry.token)
+              },
+              prevEndTime = prevEntry.startTime + prevEntry.duration) :: acc
+          }
       }
-    }.foldLeft(Map.empty[String, Set[CTMEntry]]) { (acc, pair) =>
-      acc + (pair._1 -> (acc.getOrElse(pair._1, Set.empty[CTMEntry]) + (pair._2)))
+    }.foldLeft(Map.empty[String, Set[CTMEntry]]) { (acc, entry) =>
+      acc + (entry.token -> (acc.getOrElse(entry.token, Set.empty[CTMEntry]) + (entry)))
     }
     new KWSIndex(index)
   }
