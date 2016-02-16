@@ -12,23 +12,23 @@ class KWSIndex(
       .map(_.toLowerCase)
       .map(index.get)
     if (res.exists(_.isEmpty)) None
-    else Some(
-      res.map(_.get).reduceLeft { (acc, x) =>
-        (for {
-          prevEntry <- acc
-          entry <- x if (
-            // phrases must belong to same file
-            entry.kwFile == prevEntry.kwFile
-            && prevEntry.startTime < entry.startTime
-            && prevEntry.startTime + prevEntry.duration == entry.prevEndTime // TODO: generalize to morphs?
-            && entry.startTime - (prevEntry.startTime + prevEntry.duration) < 0.5)
-        } yield {
-          prevEntry.copy(
-            duration = entry.startTime + entry.duration - prevEntry.startTime,
-            token = prevEntry.token ++ " " ++ entry.token,
-            score = prevEntry.score * entry.score
-          )
-        }).toSet
+    else Some(res
+        .map(_.get.map(entry => entry.copy(score=(1.0/res.size) * entry.score)))
+        .reduceLeft { (acc, x) =>
+          (for {
+            prevEntry <- acc;
+            entry <- x;
+            if (
+              entry.kwFile == prevEntry.kwFile // phrases must belong to same file
+              && prevEntry.startTime < entry.startTime && entry.startTime < (prevEntry.startTime + prevEntry.duration) + 0.5
+              && prevEntry.startTime + prevEntry.duration == entry.prevEndTime) // TODO: generalize to morphs?
+          } yield {
+            prevEntry.copy(
+              duration = entry.startTime + entry.duration - prevEntry.startTime,
+              token = prevEntry.token ++ " " ++ entry.token,
+              score = prevEntry.score + entry.score
+            )
+          }).toSet
       })
   }
 

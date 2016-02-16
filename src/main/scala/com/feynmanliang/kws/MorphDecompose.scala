@@ -4,12 +4,8 @@ import scala.io.Source
 
 class MorphDecompose private (
     qDict: Map[String, List[String]], obDict: Map[String, List[String]]) {
-  def decomposeQuery(tokens: String): String = {
-    tokens.split("\\s+")
-      .map(_.toLowerCase)
-      .flatMap { token => qDict.getOrElse(token, List(token)) }
-      .mkString(" ")
-  }
+  def decomposeQuery(token: String): List[String] = qDict
+    .getOrElse(token, List(token))
 
   /** Decompose a CTM entry into a list of morphemes
       We distribute startTime/durations and scores uniformly across all morphemes.

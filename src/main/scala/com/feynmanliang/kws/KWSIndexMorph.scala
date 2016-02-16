@@ -6,16 +6,20 @@ class KWSIndexMorph(
     index: Map[String, Set[CTMEntry]],
     md: MorphDecompose) extends KWSIndex(index) {
 
-  val morphIndex = index.values
-    .flatMap(_.flatMap(md.decomposeEntry))
-    .foldLeft(Map[String, Set[CTMEntry]]()) { (acc, x) =>
-      acc + (x.token -> (acc.getOrElse(x.token, Set[CTMEntry]()) + x))
-    }
+  // Should be true if using decode-morph.ctm
+  assert(index.values.reduce(_++_).filter(entry => md.decomposeEntry(entry).size > 1).size == 0)
+
+  //val morphIndex = index.values
+  //  .flatMap(_.flatMap(md.decomposeEntry))
+  //  .foldLeft(Map[String, Set[CTMEntry]]()) { (acc, x) =>
+  //    acc + (x.token -> (acc.getOrElse(x.token, Set[CTMEntry]()) + x))
+  //  }
+  val morphIndex = index
 
   override def get(tokens: String): Option[Set[CTMEntry]] = {
     val res = tokens.split("\\s+")
       .map(_.toLowerCase)
-      .flatMap(md.decomposeQuery(_).split("\\s+"))
+      .flatMap(md.decomposeQuery(_))
       .map(morphIndex.get)
     if (res.exists(_.isEmpty)) None
     else Some(
@@ -23,12 +27,13 @@ class KWSIndexMorph(
       res.map(_.get).reduceLeft { (acc, x) =>
         (for {
           prevEntry <- acc
-          entry <- x if (
-            entry.kwFile == prevEntry.kwFile
-            && prevEntry.startTime < entry.startTime
-            && (entry.prevToken.isEmpty || (entry.prevToken.get == prevEntry.token.split("\\s+").last))
+          entry <- x
+          if (
+            prevEntry.kwFile == entry.kwFile
+            && prevEntry.startTime < entry.startTime //&& entry.startTime < (prevEntry.startTime + prevEntry.duration) + 0.5
+            //&& (entry.prevToken.isEmpty || (entry.prevToken.get == md.decomposeEntry(prevEntry).last.token))
             //&& prevEntry.startTime + prevEntry.duration == entry.prevEndTime
-            && entry.startTime - (prevEntry.startTime + prevEntry.duration) < 0.5)
+            && true)
         } yield {
           entry.copy(
             startTime = prevEntry.startTime,
@@ -75,9 +80,9 @@ object KWSIndexMorph {
     parser.parse(args, Config()) match {
       case Some(config) =>
         val indexMorph = KWSIndexMorph(
-          config.ctmFile.getPath(),
-          config.dict.getPath(),
-          config.kwDict.getPath())
+          ctmPath = config.ctmFile.getPath(),
+          obDictPath = config.dict.getPath(),
+          qDictPath = config.kwDict.getPath())
         val queryResults = indexMorph.kws(config.queryFile.getPath())
         scala.xml.XML.save(config.out.getPath(), queryResults.toXML())
       case None =>
