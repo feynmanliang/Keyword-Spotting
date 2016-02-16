@@ -4,8 +4,12 @@ import scala.io.Source
 
 class MorphDecompose private (
     qDict: Map[String, List[String]], obDict: Map[String, List[String]]) {
-  def decomposeQuery(token: String): List[String] = qDict
-    .getOrElse(token, List(token))
+  def decomposeQuery(tokens: Iterable[String]): List[List[String]] = {
+    tokens.map(decomposeQuery).toList
+  }
+  def decomposeQuery(token: String): List[String] = {
+    qDict.getOrElse(token, List(token))
+  }
 
   /** Decompose a CTM entry into a list of morphemes
       We distribute startTime/durations and scores uniformly across all morphemes.
@@ -15,7 +19,6 @@ class MorphDecompose private (
       case None => List(entry)
       case Some(morphs) => {
         val morphDur = (entry.duration / morphs.size)
-        val morphScore = math.pow(entry.score, 1D/morphs.size)
         if (morphs.size < 2) {
           List(entry)
         } else {
@@ -25,16 +28,14 @@ class MorphDecompose private (
                 entry.copy(
                   duration = morphDur,
                   token = morphPair(0),
-                  prevToken = None,
-                  score = morphScore
+                  prevToken = None
                 ),
                 entry.copy(
                   startTime = entry.startTime + (i+1)*morphDur,
                   duration = morphDur,
                   token = morphPair(1),
                   prevToken = Some(morphPair(0)),
-                  prevEndTime = entry.startTime + (i+1)*morphDur,
-                  score = morphScore)
+                  prevEndTime = entry.startTime + (i+1)*morphDur)
               )
             } else {
               List(
@@ -43,8 +44,7 @@ class MorphDecompose private (
                   duration = morphDur,
                   token = morphPair(1),
                   prevToken = Some(morphPair(0)),
-                  prevEndTime = entry.startTime + (i+1)*morphDur,
-                  score = morphScore)
+                  prevEndTime = entry.startTime + (i+1)*morphDur)
               )
             }
           }.toList

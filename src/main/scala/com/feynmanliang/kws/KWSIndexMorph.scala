@@ -24,26 +24,28 @@ class KWSIndexMorph(
     if (res.exists(_.isEmpty)) None
     else Some(
       // TODO: split up by words, then do morph decomposition?
-      res.map(_.get).reduceLeft { (acc, x) =>
-        (for {
-          prevEntry <- acc
-          entry <- x
-          if (
-            prevEntry.kwFile == entry.kwFile
-            && prevEntry.startTime < entry.startTime //&& entry.startTime < (prevEntry.startTime + prevEntry.duration) + 0.5
-            //&& (entry.prevToken.isEmpty || (entry.prevToken.get == md.decomposeEntry(prevEntry).last.token))
-            //&& prevEntry.startTime + prevEntry.duration == entry.prevEndTime
-            && true)
-        } yield {
-          entry.copy(
-            startTime = prevEntry.startTime,
-            duration = entry.startTime + entry.duration - prevEntry.startTime,
-            token = prevEntry.token ++ " " ++ entry.token,
-            prevEndTime = prevEntry.prevEndTime,
-            score = prevEntry.score * entry.score
-          )
-        }).toSet
-      })
+      res
+        .map(_.get.map(entry => entry.copy(score=(1.0/res.size) * entry.score)))
+        .reduceLeft { (acc, x) =>
+          (for {
+            prevEntry <- acc;
+            entry <- x;
+            if (
+              prevEntry.kwFile == entry.kwFile
+              && prevEntry.startTime < entry.startTime && entry.startTime < (prevEntry.startTime + prevEntry.duration) + 0.5
+              //&& (entry.prevToken.isEmpty || (entry.prevToken.get == md.decomposeEntry(prevEntry).last.token))
+              //&& prevEntry.startTime + prevEntry.duration == entry.prevEndTime
+              && true)
+          } yield {
+            entry.copy(
+              startTime = prevEntry.startTime,
+              duration = entry.startTime + entry.duration - prevEntry.startTime,
+              token = prevEntry.token ++ " " ++ entry.token,
+              prevEndTime = prevEntry.prevEndTime,
+              score = prevEntry.score + entry.score
+            )
+          }).toSet
+        })
   }
 }
 

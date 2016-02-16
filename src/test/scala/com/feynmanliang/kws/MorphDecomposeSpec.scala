@@ -8,19 +8,19 @@ class MorphDecomposeSpec extends FlatSpec {
   val md = MorphDecompose(qPath, obPath)
 
  "A MorphDecompose" should "decompose a query string" in {
-    assert(md.decomposeQuery("walini") === "wali ni")
-    assert(md.decomposeQuery("very vile") === "ve ry vi le")
+    assert(md.decomposeQuery("walini") === List("wali","ni"))
+    assert(md.decomposeQuery("very vile".split("\\s+")) === List(List("ve", "ry"), List("vi", "le")))
   }
 
   it should "return the query unchanged if no entry in morph dict" in {
-    assert(md.decomposeQuery("abcdefg hijkl") === "abcdefg hijkl")
+    assert(md.decomposeQuery("abcdefg hijkl".split("\\s+")) === List(List("abcdefg"), List("hijkl")))
   }
 
   it should "decompose a CTMEntry" in {
     val entry = CTMEntry("", 1, 0.5, 0.4, "vile", None, 0.33, 0.09)
     assert(md.decomposeEntry(entry) == List(
-      CTMEntry("", 1, 0.5, 0.2, "vi", None, 0.33, 0.3),
-      CTMEntry("", 1, 0.7, 0.2, "le", Some("vi"), 0.7, 0.3)
+      CTMEntry("", 1, 0.5, 0.2, "vi", None, 0.33, 0.09),
+      CTMEntry("", 1, 0.7, 0.2, "le", Some("vi"), 0.7, 0.09)
     ))
   }
 
