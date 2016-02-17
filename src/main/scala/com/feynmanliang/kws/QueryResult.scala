@@ -2,7 +2,7 @@ package com.feynmanliang.kws
 
 import scala.xml.Elem
 
-class QueryResult(
+case class QueryResult(
     val file: String,
     private[kws] val results: Map[String, Set[CTMEntry]],
     scoreNormalization: String = "NONE") {

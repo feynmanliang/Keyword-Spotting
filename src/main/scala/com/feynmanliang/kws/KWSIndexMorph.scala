@@ -4,17 +4,20 @@ import java.io.File
 
 class KWSIndexMorph(
     index: Map[String, Set[CTMEntry]],
-    md: MorphDecompose) extends KWSIndex(index) {
+    md: MorphDecompose,
+    scoreNorm: String = "NONE") extends KWSIndex(index, scoreNorm) {
 
-  // Should be true if using decode-morph.ctm
-  assert(index.values.reduce(_++_).filter(entry => md.decomposeEntry(entry).size > 1).size == 0)
-
-  //val morphIndex = index.values
-  //  .flatMap(_.flatMap(md.decomposeEntry))
-  //  .foldLeft(Map[String, Set[CTMEntry]]()) { (acc, x) =>
-  //    acc + (x.token -> (acc.getOrElse(x.token, Set[CTMEntry]()) + x))
-  //  }
-  val morphIndex = index
+  val morphIndex = if (index.values.reduce(_++_).exists(entry => md.decomposeEntry(entry).size > 1)) {
+    // Apply entry decomposition (for decode.ctom)
+    index.values
+      .flatMap(_.flatMap(md.decomposeEntry))
+      .foldLeft(Map[String, Set[CTMEntry]]()) { (acc, x) =>
+      acc + (x.token -> (acc.getOrElse(x.token, Set[CTMEntry]()) + x))
+    }
+  } else {
+    // No need to decompose (for decode-morph.ctm)
+    index
+  }
 
   override def get(tokens: String): Option[Set[CTMEntry]] = {
     val res = tokens.split("\\s+")
@@ -50,11 +53,12 @@ class KWSIndexMorph(
 }
 
 object KWSIndexMorph {
-  def apply(ctmPath: String, obDictPath: String, qDictPath: String): KWSIndexMorph  = {
+  def apply(
+      ctmPath: String, obDictPath: String, qDictPath: String, scoreNorm: String = "NONE"): KWSIndexMorph  = {
     val index = KWSIndex(ctmPath)
     val md = MorphDecompose(qDictPath, obDictPath)
 
-    new KWSIndexMorph(index.index, md)
+    new KWSIndexMorph(index.index, md, scoreNorm)
   }
 
   def main(args: Array[String]):Unit = {
