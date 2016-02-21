@@ -4,3 +4,4 @@ target/
 project/
 .ensime
 .ensime_cache/
+output/

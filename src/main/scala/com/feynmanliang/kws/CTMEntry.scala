@@ -27,4 +27,16 @@ case class CTMEntry(
   }
 }
 
+object CTMEntry {
+  def fromXMLNode(e: scala.xml.Node): CTMEntry = CTMEntry(
+    kwFile=(e \ "@file").text,
+    channel=(e \ "@channel").text.toInt,
+    startTime=(e \ "@tbeg").text.toDouble,
+    duration=(e \ "@dur").text.toDouble,
+    token="", // TODO: allow initializing token from XML (OK for just combining)
+    prevToken=None, // TODO: allow initializing token from XML (OK for just combining)
+    prevEndTime=0D, // TODO: allow initializing token from XML (OK for just combining)
+    score=(e \ "@score").text.toDouble)
+}
+
 // vim: set ts=2 sw=2 et sts=2:

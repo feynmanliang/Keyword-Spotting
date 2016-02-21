@@ -9,6 +9,7 @@ class KWSIndexMorph(
 
   val morphIndex = if (index.values.reduce(_++_).exists(entry => md.decomposeEntry(entry).size > 1)) {
     // Apply entry decomposition (for decode.ctom)
+    println("Decomposing index => morphIndex")
     index.values
       .flatMap(_.flatMap(md.decomposeEntry))
       .foldLeft(Map[String, Set[CTMEntry]]()) { (acc, x) =>
@@ -16,29 +17,31 @@ class KWSIndexMorph(
     }
   } else {
     // No need to decompose (for decode-morph.ctm)
+    println("index already built over morphs, setting morphIndex <- index")
     index
   }
 
   override def get(tokens: String): Option[Set[CTMEntry]] = {
-    val res = tokens.split("\\s+")
-      .map(_.toLowerCase)
-      .flatMap(md.decomposeQuery(_))
+    val hitsPerMorph = md.decomposeQuery(tokens.split("\\s+").map(_.toLowerCase))
+      .flatten // treat morphs same as words
       .map(morphIndex.get)
-    if (res.exists(_.isEmpty)) None
+    if (hitsPerMorph.exists(hits => hits.isEmpty)) None
     else Some(
-      // TODO: split up by words, then do morph decomposition?
-      res
-        .map(_.get.map(entry => entry.copy(score=(1.0/res.size) * entry.score)))
+      hitsPerMorph
+        .map(hits =>
+          hits.get.map { entry =>
+            entry.copy(score=(1.0/hitsPerMorph.size) * entry.score)
+          }
+        )
         .reduceLeft { (acc, x) =>
           (for {
             prevEntry <- acc;
             entry <- x;
             if (
               prevEntry.kwFile == entry.kwFile
-              && prevEntry.startTime < entry.startTime && entry.startTime < (prevEntry.startTime + prevEntry.duration) + 0.5
-              //&& (entry.prevToken.isEmpty || (entry.prevToken.get == md.decomposeEntry(prevEntry).last.token))
+              && prevEntry.startTime < entry.startTime && entry.startTime < (prevEntry.startTime + prevEntry.duration) + 0.5)
+              //&& (entry.prevToken.isEmpty || (entry.prevToken.get == prevEntry.last.token))
               //&& prevEntry.startTime + prevEntry.duration == entry.prevEndTime
-              && true)
           } yield {
             entry.copy(
               startTime = prevEntry.startTime,
@@ -65,6 +68,7 @@ object KWSIndexMorph {
     case class Config(
       ctmFile: File = new File("."),
       queryFile: File = new File("."),
+      scoreNorm: String = "NONE",
       dict: File = new File("."),
       kwDict: File = new File("."),
       morphDecompose: Boolean = false,
@@ -80,6 +84,8 @@ object KWSIndexMorph {
       c.copy(dict= x) } text("dict is a required file property")
       opt[File]('k', "kwDict") required() valueName("<file>") action { (x, c) =>
       c.copy(kwDict= x) } text("kwDict is a required file property")
+      opt[String]('q', "scoreNorm") required() valueName("<string>") action { (x, c) =>
+      c.copy(scoreNorm= x) } text("scoreNormis a required string property")
       opt[File]('o', "out") required() valueName("<file>") action { (x, c) =>
       c.copy(out = x) } text("out is a required file property")
     }
@@ -88,7 +94,8 @@ object KWSIndexMorph {
         val indexMorph = KWSIndexMorph(
           ctmPath = config.ctmFile.getPath(),
           obDictPath = config.dict.getPath(),
-          qDictPath = config.kwDict.getPath())
+          qDictPath = config.kwDict.getPath(),
+          scoreNorm = config.scoreNorm)
         val queryResults = indexMorph.kws(config.queryFile.getPath())
         scala.xml.XML.save(config.out.getPath(), queryResults.toXML())
       case None =>

@@ -35,6 +35,20 @@ case class QueryResult(
       }}
     </kwslist>
   }
+
+}
+
+object QueryResult {
+  def fromXML(e: Elem, scoreNorm: String = "NONE"): QueryResult = {
+    QueryResult(
+      (e \ "@kwlist_filename").text,
+      (e \ "detected_kwlist").map { kwlist =>
+        (kwlist \ "@kwid").text -> ((kwlist \ "kw").map { kw =>
+          CTMEntry.fromXMLNode(kw)
+        }.toSet)
+      }.toMap,
+      scoreNorm)
+  }
 }
 
 // vim: set ts=2 sw=2 et sts=2:

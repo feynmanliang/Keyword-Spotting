@@ -28,7 +28,7 @@ class MorphDecompose private (
                 entry.copy(
                   duration = morphDur,
                   token = morphPair(0),
-                  prevToken = None
+                  prevToken = entry.prevToken.flatMap(obDict.get).map(_.last)
                 ),
                 entry.copy(
                   startTime = entry.startTime + (i+1)*morphDur,
