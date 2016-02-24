@@ -25,7 +25,6 @@ object LengthMap {
 
         val file = new File(config.out.getPath())
         val bw = new BufferedWriter(new FileWriter(file))
-        // TODO: length = number of morphs instead of number of words?
         val queryFile = scala.xml.XML.loadFile(config.queryFile.getPath())
         (queryFile \ "kw").map { kw =>
           val kwId = (kw \ "@kwid").text.drop(6)

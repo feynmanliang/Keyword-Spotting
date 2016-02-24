@@ -1,0 +1,17 @@
+```{r libraries}
+library(ggplot2)
+```
+
+```{r lengths}
+data = read.csv('ibm-morph-sto-length.csv')
+
+ggplot(data, aes(x=Length, y=Num.Instances)) +
+  geom_point() +
+  geom_line() +
+  scale_x_discrete()
+
+ggplot(data, aes(x=Length, y=TWV)) +
+  geom_point() +
+  geom_line() +
+  scale_x_discrete()
+```
