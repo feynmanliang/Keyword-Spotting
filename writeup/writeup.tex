@@ -127,7 +127,7 @@ decomposition. In addition, we update the \texttt{prevToken} and
 \texttt{prevEndTime} fields to correctly reflect the decomposition of the
 previous consecutive entry (if applicable).
 
-The \texttt{KWSIndexMorph} class (\autoref{lst:kwsIndexMOrph}) uses
+The \texttt{KWSIndexMorph} class (\autoref{lst:kwsIndexMorph}) uses
 \texttt{MorphDecompose} to automatically decompose any queries submitted as
 well as the the inverted index keys (if required, e.g.\ if using a word-based
 rather than morph-based ASR decoding output) into morphs before performing the
@@ -288,7 +288,7 @@ In this section, we investigate system combinations involving three outputs
 with unnormalized scores from IBM WFST software (a morph-based system ``Morph''
 and two word-based systems ``Word'' and Word Sys2).
 
-\subsection{Independent evaluation of STO normalization on IBM WFST outputs}
+\subsection{STO normalization on IBM WFST outputs}
 
 We first consider the provided outputs in isolation.  \autoref{tab:ibm-indiv}
 investigate how STO affects each of the individual systems.  Here, the increase
@@ -326,7 +326,7 @@ achieve non-nil OOV TWV\@. Again, this is due to the fact that different (e.g.\
 OOV) word sequences may decompose to the same morph sequence (e.g.\ which could
 happen to be IV), allowing OOV queries to be handled.
 
-\subsection{Combining Outputs}
+\subsection{Combining IBM WFST outputs and the effects of score normalization}
 
 To combine outputs, we provide the \texttt{ResultsCombiner} class (\autoref{lst:resultCombiner}),
 who's \texttt{ResultsCombiner\#combine} method takes two \texttt{QueryResults} (possibly
