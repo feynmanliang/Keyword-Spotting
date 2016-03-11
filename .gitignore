@@ -6,3 +6,4 @@ project/
 .ensime_cache/
 output/
 .Rproj.user
+scoring/
