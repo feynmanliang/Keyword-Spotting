@@ -2,6 +2,7 @@ package com.feynmanliang.kws
 
 import scala.xml.Elem
 
+// time spans [startTime, endTime) are half open
 case class CTMEntry(
     kwFile: String,
     channel: Int,
@@ -25,6 +26,12 @@ case class CTMEntry(
       score={f"$score%.6f"}
       decision="YES" />
   }
+
+  def endTime: Double = this.startTime + this.duration
+
+  def disjointWith(that: CTMEntry): Boolean =
+    (this.endTime <= that.startTime) || (that.endTime <= this.startTime)
+  def overlapsWith(that: CTMEntry): Boolean = !(disjointWith(that))
 }
 
 object CTMEntry {

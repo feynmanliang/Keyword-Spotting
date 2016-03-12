@@ -6,8 +6,27 @@ import scala.xml.Elem
 object ResultCombiner {
   def combine(qr1: QueryResult, qr2: QueryResult): QueryResult = qr1.copy(
     scoreNormalization="NONE", // do not renormalize resultsNorm since it is reused in accumulator
-    results=(qr1.results.keys++qr2.results.keys).map {
-      k => k -> (qr1.resultsNorm.getOrElse(k,Set()) ++ qr2.resultsNorm.getOrElse(k,Set()))
+    results=(qr1.results.keys++qr2.results.keys).map { query =>
+      val qr1Hits = qr1.resultsNorm.getOrElse(query, Set())
+      val qr2Hits = qr2.resultsNorm.getOrElse(query, Set())
+
+      val combinedHits = (qr1Hits ++ qr2Hits)
+        .foldLeft(List.empty[CTMEntry]) { case (combinedHits, hit) =>
+          // acc will be a list of non-overlapping hits combined from qr1 and qr2
+          combinedHits
+            .find(oHit => oHit.overlapsWith(hit))
+            match {
+              case None => hit :: combinedHits
+              case Some(oHit) => {
+                // TODO: comment on how order of combination matters
+                val oHitNew = (if (hit.score > oHit.score) hit else oHit).copy(
+                  score = hit.score + oHit.score // SUM combination, TODO: investigate others
+                )
+                combinedHits.updated(combinedHits.indexOf(oHit), oHitNew)
+              }
+            }
+        }
+        query -> combinedHits.toSet
     }.toMap)
 
   def main(args: Array[String]):Unit = {

@@ -27,7 +27,6 @@ case class QueryResult(
         <detected_kwlist kwid={s"$kw"} oov_count="0" search_time="0.0">
           {for {
             entry <- resultsNorm(kw)
-            // if (entry.score >= 0.042)
           } yield {
             entry.toXML()
           }}
