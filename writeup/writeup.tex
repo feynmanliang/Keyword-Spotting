@@ -325,7 +325,7 @@ significantly higher.  This is because these systems can utilize the full word
 lattice, which encodes alternative hypotheses that can mitigate transcription
 errors present in the highest-scoring transcription.
 
-Unlike \label{tab:sto}, STO dramatically affects the performance of these
+Unlike \autoref{tab:sto}, STO dramatically affects the performance of these
 systems with overall TWV gains ranging from $0.061$ to $0.160$. These gains are
 consistent with those reported in \cite{mamou2013system}. Since the WFST-based
 system uses the full word-lattice, the consideration of alternative hypotheses
@@ -339,7 +339,7 @@ and hence the effects of STO are more pronounced.
 The significant $16\%$ improvement in Morph is largely due to a $27.8\%$
 improvement on OOV terms. This suggests that the Morph system is capable of
 spotting a large number of OOV queries, but also generates a lot of false
-positives which lower the overall TWV. After STO, the scores of the rare
+positives which lower the overall TWV\. After STO, the scores of the rare
 terms are boosted relative to common ones, reducing the number of false
 positives (i.e. $P_{FA}$ in \autoref{eq:twv}) and improving TWV.
 
