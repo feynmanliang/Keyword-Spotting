@@ -13,7 +13,8 @@ class KWSIndex(
       .map(index.get)
     if (res.exists(_.isEmpty)) None
     else Some(res
-        .map(_.get.map(entry => entry.copy(score=(1.0/res.size) * entry.score)))
+        .map(_.get.map(entry => // this makes the hit sequence's score the average of the individual entries
+          entry.copy(score=(1.0/res.size) * entry.score)))
         .reduceLeft { (acc, x) =>
           (for {
             prevEntry <- acc;
@@ -21,7 +22,7 @@ class KWSIndex(
             if (
               entry.kwFile == prevEntry.kwFile // phrases must belong to same file
               && prevEntry.startTime < entry.startTime && entry.startTime < (prevEntry.startTime + prevEntry.duration) + 0.5
-              && prevEntry.startTime + prevEntry.duration == entry.prevEndTime) // TODO: generalize to morphs?
+              && prevEntry.startTime + prevEntry.duration == entry.prevEndTime)
           } yield {
             prevEntry.copy(
               duration = entry.startTime + entry.duration - prevEntry.startTime,

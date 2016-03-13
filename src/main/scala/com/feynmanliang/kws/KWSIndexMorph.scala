@@ -29,7 +29,7 @@ class KWSIndexMorph(
     else Some(
       hitsPerMorph
         .map(hits =>
-          hits.get.map { entry =>
+          hits.get.map { entry => // this makes the hit sequence's score the average of the individual entries
             entry.copy(score=(1.0/hitsPerMorph.size) * entry.score)
           }
         )
@@ -40,8 +40,6 @@ class KWSIndexMorph(
             if (
               prevEntry.kwFile == entry.kwFile
               && prevEntry.startTime < entry.startTime && entry.startTime < (prevEntry.startTime + prevEntry.duration) + 0.5)
-              //&& (entry.prevToken.isEmpty || (entry.prevToken.get == prevEntry.last.token))
-              //&& prevEntry.startTime + prevEntry.duration == entry.prevEndTime
           } yield {
             entry.copy(
               startTime = prevEntry.startTime,
