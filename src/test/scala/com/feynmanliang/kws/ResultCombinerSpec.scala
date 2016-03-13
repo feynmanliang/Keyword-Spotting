@@ -17,7 +17,7 @@ class ResultCombinerSpec extends FlatSpec {
       .reduceLeft(ResultCombiner.combine)
 
     assert((combinedResults.toXML() \ "detected_kwlist").length > 100)
-    assert(combinedResults.results.values.reduce(_ ++ _) >= combinedResults.results.size)
+    assert(combinedResults.results.values.reduce(_ ++ _).size >= combinedResults.results.size)
   }
 }
 

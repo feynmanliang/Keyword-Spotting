@@ -19,6 +19,77 @@
 
 \maketitle
 
+\section{New Data}
+
+\begin{table}[ht!]
+  \begin{tabular}{clcc}
+    \toprule
+    System                     &     & Baseline & STO \\
+    \midrule
+    \multirow{3}{*}{Word}      & IV  & 0.501 & 0.579\\
+                               & OOV & 0.000 & 0.000\\
+                               & All & 0.309 & 0.460\\
+                               \hline
+    \multirow{3}{*}{Word Sys2} & IV  & 0.507 & 0.585\\
+                               & OOV & 0.000 & 0.000\\
+                               & All & 0.403 & 0.465\\
+                               \hline
+    \multirow{3}{*}{Morph}     & IV  & 0.430 & 0.556\\
+                               & OOV & 0.089 & 0.367\\
+                               & All & 0.360 & 0.520\\
+    \bottomrule
+  \end{tabular}
+  \caption{}
+  \label{tab:}
+\end{table}
+
+\begin{table}[ht!]
+  \begin{tabular}{clc}
+    \toprule
+    Methodology & & ATWV \\
+    \midrule
+    \multirow{3}{*}{CombSUM.IBM}         & IV  & 0.493 \\
+                                         & OOV & 0.086 \\
+                                         & All & 0.410 \\
+    \multirow{3}{*}{STO-CombSUM.IBM}     & IV  & 0.601 \\
+                                         & OOV & 0.366 \\
+                                         & All & 0.553 \\
+    \multirow{3}{*}{CombSUM.IBM-STO}     & IV  & 0.590 \\
+                                         & OOV & 0.369 \\
+                                         & All & 0.545 \\
+    \multirow{3}{*}{STO-CombSUM.IBM-STO} & IV  & 0.601 \\
+                                         & OOV & 0.364 \\
+                                         & All & 0.552 \\
+
+    \multirow{3}{*}{STO-CombSUM.All-STO} & IV  & 0.596 \\
+                                         & OOV & 0.366 \\
+                                         & All & 0.549 \\
+    \bottomrule
+  \end{tabular}
+  \caption{}
+  \label{tab:}
+\end{table}
+
+\begin{table}[ht!]
+  \begin{tabular}{clccccc}
+    \toprule
+    Query Length & \# terms & Baseline & STO & CombSUM.IBM & STO-CombSUM.IBM-STO \\ % TODO: \% corpus instead of num terms
+    \midrule
+    1 & 28  & 0.075 & 0.360 & 0.204 & 0.443 \\
+    2 & 215 & 0.433 & 0.550 & 0.440 & 0.570 \\
+    3 & 100 & 0.345 & 0.554 & 0.437 & 0.575 \\
+    4 & 104 & 0.369 & 0.543 & 0.436 & 0.583 \\
+    5 & 30  & 0.220 & 0.384 & 0.286 & 0.413 \\
+    6 & 10  & 0.094 & 0.197 & 0.197 & 0.397 \\
+    7 & 1   & 0.000 & 0.000 & 0.000 & 0.000 \\
+    \bottomrule
+  \end{tabular}
+  \caption{}
+  \label{tab:}
+\end{table}
+
+% TODO: combine own systems with IBM systems
+
 \section{1-best keyword spotting}
 
 \subsection{Word based KWS}
