@@ -18,14 +18,15 @@
 
 \section{Introduction}
 
-This practical investigates keyword spotting (KWS) with written queries on low
-resource languages. Specifically, we use a Swahili corpus from the Babel
-project's 2015 surprise evaluation language. We implement an \emph{efficient}
-KWS system which supports constant time individual term queries and only
-requires time linear in the 1-best list size to construct the KWS index from
-1-best ASR outputs. To support \emph{queries containing OOV terms}, we support
-morphological decomposition\cite{narasimhan2014morphological} of both the index
-and the query.
+This practical investigates keyword spotting (KWS) with written (i.e.\ manually
+transcribed) queries on low resource languages. Specifically, we use a Swahili
+corpus from the IARPA Babel project's 2015 surprise evaluation language. We
+implement an \emph{efficient} KWS system which can perform \emph{constant time
+queries for individual terms} and only requires time linear in the 1-best list
+size to construct the KWS index from 1-best ASR outputs. To allow for
+\emph{queries containing OOV terms}, we support morphological
+decomposition\cite{narasimhan2014morphological} of both the index and the
+query.
 
 Additionally, we use outputs from a WFST-based KWS system provided by
 IBM\cite{gales2014speech} to quantify the performance impact of using 1-best
@@ -41,7 +42,7 @@ study how it affects system combination performance.
 
 We implement a word-based KWS system in \texttt{KWSIndex}. Using a 1-best ASR
 decoding output with posterior scores, we build an inverted index mapping
-individual terms to their respective occurences.
+individual terms to their respective occurrence time-spans and scores.
 
 The inverted index is implemented using a hashmap, which enable insertion and
 lookup operations with $O(1)$ amortized time complexity. Each term in the
@@ -105,12 +106,10 @@ As expected, our system achieves 1.000 MTWV on the reference transcription.
 The performance on 1-best ASR outputs is significantly worse. This is primarily
 due to two effects:
 \begin{enumerate}
-  \item ASR transcription errors
-  \item Query terms which are OOV for the ASR system
+  \item ASR transcription errors, which results in deterioration of performance on IV queries.
+  \item Lack of support for OOV terms, which results in all queries containing OOV
+    terms to yield no hits and a $0.000$ MTWV.
 \end{enumerate}
-Transcription errors lead to degredation of IV performance. For OOV query terms,
-the 1-best word decoding does not contain these terms so they are excluded from the
-KWS index and hence result in $0.000$ MTWV for OOV words.
 
 \subsection{Morphological Decomposition}
 
@@ -123,8 +122,8 @@ morphological decomposition coincides with the decomposition of an IV term.
 \texttt{MorphDecompose} uses morph dictionaries for the decoding vocabulary
 (\texttt{morph.dct}) and the query terms (\texttt{morph.kwslist.dct}) to
 perform morphological decomposition of terms and phrases. When decomposing a
-single term hit into multiple morph hits, we divide the occurence timespan of
-the term equally amongst the constituent morphs and choose the morph hits'
+single term hit into multiple morph hits, we divide the occurrence time-span of
+the term equally among the constituent morphs and choose the morph hits'
 scores to be equal to the term hit's score. This ensures that the duration and
 score for an individual term remains the same before and after decomposition.
 
@@ -134,9 +133,9 @@ at runtime.  We also decompose the KWS index at initialization if required
 morph-based \texttt{decode-morph.ctm}).
 
 After decomposition, term and phrase queries are handled almost identically to
-\texttt{KWSIndex.get}. A notable exception is due to a bug in the supplied IBM
-morph segmenation, which contains overlapping morph segmentations. For example,
-in \texttt{decode-morph.ctm}:
+\texttt{KWSIndex.get}. A \emph{notable exception is due to a bug in the
+supplied IBM morph segmentation}, which contains overlapping morph
+segmentations. For example, in \texttt{decode-morph.ctm}:
 \begin{lstlisting}[firstnumber=101748]
 BABEL_OP2_202_90080_20140319_222809_inLine 1 396.14 0.26 pia 0.929472
 BABEL_OP2_202_90080_20140319_222809_inLine 1 396.14 1.98 pia 0.178492
@@ -149,8 +148,8 @@ consecutive words in a phrase hit are equal) when returning hits.
 \subsubsection{Experimental results}
 
 \autoref{tab:morph} reports our results using morphological decomposition.
-The ``Morph'' system peforms morph decomposition on a word-based ASR's 1-best
-decoding while the ``Morph.MD'' system directly uses a morph-based ASR's 1-best
+The Morph system performs morph decomposition on a word-based ASR's 1-best
+decoding while the Morph.MD system directly uses a morph-based ASR's 1-best
 output to construct the KWS index.
 
 \begin{table}[ht!]
@@ -172,11 +171,11 @@ output to construct the KWS index.
   \label{tab:morph}
 \end{table}
 
-Notice that peformance on OOV queries is no longer $0$, indicating that
+Notice that performance on OOV queries is no longer $0$, indicating that
 morph decomposition has allowed the system to resolve some OOV queries.
 Morph.MD appears to handle OOV words better than Morph, possibly because
 the ASR system itself was built directly on morph targets. However, this
-only happens when the morph decompositon of the query term coincides
+only happens when the morph decomposition of the query term coincides
 with an IV morph decomposition hence the gap between IV and OOV queries
 is still large.
 
@@ -186,14 +185,15 @@ word-based KWS system. To understand why, recall that TWV is computed as
   \label{eq:twv}
   TWV = 1 - (P_{miss} + \beta P_{FA})
 \end{align}
-where $\beta = 999.9$ for Babel. In particular, note that false positives
-($P_{FA}$) lower TWV. In the morph based systems, when two different terms
-share the same morph decomposition the hits for both will be returned when
-either is queried.  Additionally, relaxation of the contiguity constraint for
-phrase queries to work around the IBM segmenter's bug leads to an increase in
-the number of valid phrase hits. Both factors increase the number of false
-positives when using \texttt{KWSIndexMorph}, which we confirm in the \#FA
-column of \autoref{tab:morph-word-perf}.
+where $\beta = 999.9$ for the Babel project's
+evaluation\cite{wang2014depth}.  In particular, note that false positives
+($P_{FA}$) significantly hurt the TWV metric. In the morph based systems, when
+two different terms share the same morph decomposition the hits for both will
+be returned when either is queried.  Additionally, relaxation of the contiguity
+constraint for phrase queries to work around the IBM segmenter's bug leads to
+an increase in the number of valid phrase hits. Both factors increase the
+number of false positives when using \texttt{KWSIndexMorph}, which we confirm
+in the \#FA column of \autoref{tab:morph-word-perf}.
 
 \begin{table}
   \begin{tabular}{cccccc}
@@ -231,7 +231,7 @@ $s_{ki}$ for the $i$th hit for keyword $k$ is adjusted according to
   \hat{s}_{ki} = \frac{s_{ki}}{\sum_{j \in \{\text{hits for $k$}\}} s_{kj}}
 \end{align}
 The denominator is the sum of the posterior estimates for all hits and represents
-an approximate number of occurences for the query. For rare terms, this quantity
+an approximate number of occurrences for the query. For rare terms, this quantity
 will be lower and hence the normalized score will be higher and more likely to be
 above the decision threshold\cite{mamou2013system}.
 
@@ -243,13 +243,13 @@ both yield comparable results\cite{wang2014depth}.
 
 % TODO: discuss QL and Discriminative
 
-We implement STO normalization in \texttt{QueryResult}, the classs for results
+We implement STO normalization in \texttt{QueryResult}, the class for results
 returned by a \texttt{KWSIndex}.
 
 \subsubsection{Experimental results}
 
 In \autoref{tab:sto}, we compare the MTWV of the systems with and without STO
-score normalization. The ``Threshold'' is the decision threshold attaining
+score normalization. The Threshold column is the decision threshold attaining
 the MTWV.
 
 \begin{table}[ht!]
@@ -272,7 +272,7 @@ the MTWV.
 
 Notice that the best decision threshold decreases after applying STO. This is
 because the denominator in STO (\autoref{eq:sto}) is a sum of posterior scores,
-which represent an approximate number of occurences for the query and hence
+which represent an approximate number of occurrences for the query and hence
 usually $\geq 1$.
 
 In general, applying STO improves TWV performance. For both the morph-based KWS
@@ -287,8 +287,8 @@ outputs whereas we are using $1$-best ASR outputs. %TODO: lattices give more alt
 Combining outputs from a diverse collection of systems is known to improve
 performance by up to $14\%$\cite{mamou2013system}. Hence, we investigate system
 combinations involving outputs from three different KWS systems with
-unnormalized scores (a morph-based system ``Morph'' and two word-based systems
-``Word'' and ``Word Sys2'') supplied by IBM. These systems utilize a WFST
+unnormalized scores (a morph-based system Morph and two word-based systems
+Word and Word Sys2) supplied by IBM. These systems utilize a WFST
 approach and are run on full word-lattices instead of 1-best lists.
 
 \subsection{STO normalization on individual IBM WFST outputs}
@@ -332,7 +332,7 @@ system uses the full word-lattice, the consideration of alternative hypotheses
 lead to a greater number of potential hits for any given query. Hence, we
 expect more hits on average than when using 1-best decodings and therefore the
 denominator in STO (\autoref{eq:sto}) is greater on average. As the average
-term is more surpressed by STO normalization, the difference in normalized
+term is more suppressed by STO normalization, the difference in normalized
 score between rare and common terms is greater when using WFST-based outputs
 and hence the effects of STO are more pronounced.
 
@@ -347,7 +347,7 @@ positives (i.e. $P_{FA}$ in \autoref{eq:twv}) and improving TWV.
 
 Numerous methods for combining the outputs of multiple systems have been
 proposed. In all methods we consider, the hits from two different systems are
-merged if their occurence time-spans overlap. The resulting combined hit's
+merged if their occurrence time-spans overlap. The resulting combined hit's
 start time and duration are set equal to the highest scoring. For combining
 scores, \cite{soto2014comparison} evaluates a variety of methods and show that
 CombSUM and CombMNZ offer good performance for KWS\. CombSUM sets the score of
@@ -361,7 +361,7 @@ Since \cite{soto2014comparison} report similar performance for CombSUM and
 CombMNZ and \cite{belkin1995combining} report superior performance for CombSUM,
 we choose to implement CombSUM in the \texttt{ResultsCombiner} class. The
 results from two systems are first unioned and then hits with overlapping
-occurence timespans are grouped together to produce the combined output.
+occurrence time-spans are grouped together to produce the combined output.
 
 \begin{table}[ht!]
   \begin{tabular}{clc}
@@ -392,8 +392,8 @@ occurence timespans are grouped together to produce the combined output.
   \end{tabular}
   \caption{Normalization and system combination. ``STO-'' prefix denotes
   normalization of scores before combination, ``-STO'' suffix denotes normalization
-  after combination, ``CombSUM.IBM'' is the combination of all three IBM systems,
-  ``CombSUM.ALL'' is the combination of all three IBM systems with our word and
+  after combination, CombSUM.IBM is the combination of all three IBM systems,
+  CombSUM.ALL is the combination of all three IBM systems with our word and
   morph-based KWS systems.}
   \label{tab:comb}
 \end{table}
@@ -408,16 +408,31 @@ is similar regardless whether STO is applied before (STO-CombSUM.IBM) or after
 (CombSUM.IBM-STO) combination, suggesting that the majority of the improvement
 comes from STO's increased emphasis on rare terms.
 
-We found that \emph{the best performing system is STO-CombSUM.IBM-STO}, achieving
-MTWV of $0.553$. STO-CombSUM.BIM outperforms STO-CombSUM.All-STO, which combines
-both the IBM system outputs with our own 1-best list KWS outputs. This is likely due
-to our worse performing KWS outputs receiving the same weight as the better
-performing IBM outputs during CombSUM. To solve this, we could use a weighted
-combination method such as WCombMNZ\cite{mamou2013system}.
+We found that \emph{the best performing system is STO-CombSUM.IBM-STO},
+achieving MTWV of $0.553$. The DET curve for this system is shown in
+\autoref{fig:det}.  It shows that the MTWV threshold of $0.0992$ yields $P_{FA}
+\approx 0.006 \%$ and $P_{Miss} \approx 39\%$. The significantly lower $P_{FA}$
+relative to $P_{Miss}$ is due to the Babel project's specification of $\beta =
+999.9$ in \autoref{eq:twv}.
+
+\begin{figure}[ht!]
+  \begin{center}
+    \includegraphics[scale=0.5]{Figures/sto-combSUM-det.png}
+  \end{center}
+  \caption{DET curve for STO-CombSUM.IBM-STO}
+  \label{fig:det}
+\end{figure}
+
+Despite STO-CombSUM.All-STO utilizing outputs from our 1-best KWS systems in
+addition to all the IBM outputs, it is still outperformed by
+STO-CombSUM.IBM-STO . This is likely due to our worse performing 1-best KWS
+outputs receiving the same weight as the better performing IBM outputs during
+CombSUM.  To solve this, we could use a weighted combination method such as
+WCombMNZ\cite{mamou2013system}.
 
 \subsection{Impact of query length}
 
-We also consider how the length of a query affects KWS system peformance. The
+We also consider how the length of a query affects KWS system performance. The
 \texttt{LengthMap} class generates a \texttt{.map} file mapping queries to
 their lengths.  \texttt{scripts/termselect.sh} is then used with this
 \texttt{.map} file to produce TWV scores segmented by query length.
@@ -466,14 +481,14 @@ queries, a problem plaguing word-based KWS systems.
 
 We then considered various forms of normalization, including query-length and
 STO normalization\cite{mamou2013system}.  Both these methods seek to improve
-TWV by emphasizing rare terms. We ruled out keyword specific
-thresholds\cite{wang2014depth}, which also has the effect of emphasizing rare
-terms but has not been as well studied in the context of system combination. We
-decided to implement STO, which \cite{mamou2013system} reports to yield
-superior performance over query-length normalization during system combination.
+TWV by emphasizing rare terms. We ruled out KSTs\cite{wang2014depth}, which
+also has the same effect of emphasizing rare terms but has not been as well
+studied in the context of system combination. We decided to implement STO,
+which \cite{mamou2013system} reports to yield superior performance over
+query-length normalization during system combination.
 
-The effects of STO are limited on systems built on 1-best decodings.
-However, when applid to IBM's WFST-based systems, the effects of STO
+The effects of STO normalization is small on systems built on 1-best decodings.
+However, when applied to IBM's WFST-based systems, the effects of STO
 normalization become much more pronounced. While these systems improve IV
 performance because errors in the 1-best decoding can be mitigated by
 alternative hypotheses in the word lattices, the Morph system's $27.8\%$ MTWV
@@ -490,7 +505,7 @@ This suggests that STO's benefit for KWS is largely due to emphasizing rare hits
 rather than making scores from different systems comparable.
 
 The best system we developed is STO-CombSUM.IBM-STO, which achieves $0.553$
-MTWV.  Combining only the three IBM systems yields better performane than
+MTWV.  Combining only the three IBM systems yields better performance than
 combining all IBM systems with the systems developed on 1-best ASR outputs
 (STO-CombSUM.All-STO). We believe this is because all systems are weighted
 equally in the CombSUM method, which can be fixed using the WCombMNZ method
@@ -502,22 +517,28 @@ output of an ASR system. Queries would then require a more sophisticated
 multi-lattice alignment\cite{lin2008spoken}.
 
 Another extension concerns discriminative score
-normalization\cite{xu2014discriminative}, which normalizes scores to
-discriminatively optimize TWV. This could be preferrable because it accounts
-for both the $P_{miss}$ term in \autoref{eq:twv} used to justify emphasizing
-rare terms as well as the $P_{FA}$ term. Also, discriminative score
+normalization\cite{xu2014discriminative}, which optimizes a parametric score
+normalization scheme to directly optimize TWV. This could be preferable because
+it accounts for both the $P_{miss}$ term in \autoref{eq:twv} used to justify
+emphasizing rare terms as well as the $P_{FA}$ term. Also, discriminative score
 normalization be particularly interesting if used to optimize the TWV of a
 combined system's pre-combination normalization, where we would expect the
 normalization to simultaneously emphasize rare terms as well as the weight
 assigned to scores from each system in the combination.
 
-Another interesting extension builds upon the WCombMNZ method described in
-\cite{mamou2013system}, which currently weights each system according to their
-TWV on an evaluation set during combination. Instead of using a global weight
-for all hits from a system, one could use different weights for different hits
-from different systems. Doing so would capture the notion that different KWS
-systems perform better on different types of queries. To handle the increase in
-model parameters, terms could be clustered and then weights applied to clusters.
+Finally, an interesting extension could be to build upon the WCombMNZ method
+described in \cite{mamou2013system}, which currently weights each system
+according to their TWV on an evaluation set during combination. Instead of
+using a global weight for all hits from a system, one could use different
+weights for different hits from different systems. 
+
+While this increases the number of system combination parameters from $N$ (the
+number of systems being combined) to $N \times T$ (where $T$ is the number of
+terms in the KWS index), techniques such as decision tree clustering could be
+used to tie weights and reduce the number of parameters. Through learning
+system and term specific weights for system combination, the notion
+that different KWS systems perform better on different ``types'' (e.g.\
+clusters) of terms can be expressed.
 
 \bibliographystyle{alpha}
 \nocite{*}
